@@ -15,6 +15,8 @@
 - [pretrained](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/pretrained)
 - [pretrained_v2](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/pretrained_v2)
 
+网盘直达：https://pan.quark.cn/s/299ebe4a22ff
+
 ### 模型存放位置
 
 `ComfyUI/models/rvc/`
