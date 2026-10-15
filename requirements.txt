@@ -1,0 +1,7 @@
+librosa
+scipy
+soundfile
+
+# 可选：FAISS 检索索引（.index）与超大特征集聚类
+# faiss-cpu
+# scikit-learn
