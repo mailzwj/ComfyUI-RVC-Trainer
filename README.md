@@ -57,7 +57,7 @@
 4. 输出采样率跟随音色模型，除非 `resample_sr` 非 0。
 5. 输出接 Save Audio 或 Preview Audio。
 
-推理代码完全内置（`rvc_inference/`）：高通滤波、长音频自动切片、f0 提取（RMVPE/FCPE）、ContentVec 特征、faiss/npy 检索混合、保护度加权、合成器推理。`fp16 autocast` 仅在 Ampere 以及更新的 GPU（compute capability ≥ 8.0）启用，其余回退 fp32。`faiss-cpu` 为可选依赖（读取 `.index`）；没有时 `.npy` 兜底可用。
+推理代码完全内置（`rvc_inference/`）：高通滤波、长音频自动切片、f0 提取（RMVPE/FCPE）、ContentVec 特征、faiss/npy 检索混合、保护度加权、合成器推理。`fp16 autocast` 在任何 CUDA GPU 上启用，无 CUDA 时回退 fp32。`faiss-cpu` 为可选依赖（读取 `.index`）；没有时 `.npy` 兜底可用。
 
 注意：输出与 RVC-Project 上游一致，是随机采样的（相同输入两次运行有约 0.4-0.7 的幅值波动）——这是模型的后验采样本性，不是 bug。
 
