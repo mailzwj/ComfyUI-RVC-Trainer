@@ -18,6 +18,9 @@ japanese = [
     "faiss-cpu",
     "scikit-learn",
 ]
+inference = [
+    "faiss-cpu",
+]
 
 [tool.comfy]
 PublisherId = "meet-ai"

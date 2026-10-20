@@ -38,6 +38,29 @@
 - **pretrained** —— 预训练模型，用于微调（**选择规则见「pretrained 参数说明」**）。不选则从随机权重开始训练，小数据集训不出可用音色。同时接受 `{"weight": ...}` 和 `{"model": ...}` 两种检查点格式，单说话人 `emb_g` 嵌入会自动扩展到 109 个说话人。
 - **resume** —— 从实验 `checkpoints` 文件夹中最新的 `G_*.pth` / `D_*.pth` 继续训练，并恢复优化器和轮次计数。
 
+## 音色替换（推理）
+
+推理节点将从 RVC-Project 项目代码提炼出的音色替换工作流封装为四个 ComfyUI 节点，与训练节点共用 `models/rvc` 目录。产物可直接接入 ComfyUI 的 Load Audio / Save Audio / Preview Audio 流程。
+
+| 节点 | 输入 | 输出 |
+| --- | --- | --- |
+| **RVC Voice Loader** | `voice_pth`（下拉，来自 `models/rvc/**/*.pth`，多级目录，自动排除 pretrained 底模）、`index_file`（下拉：`(none)`、`*.index`、`*.npy`） | `voice`、`index` |
+| **RVC Hubert & Pitch Loader** | `hubert_file`（默认 `hubert_base.safetensors`）、`pitch_file`（默认 `rmvpe.safetensors`，可选 `fcpe.safetensors`） | `hubert`、`pitch` |
+| **RVC Execute** | `voice`、`hubert`、`pitch`、`audio`、`index`（可选）＋参数 `f0_method`、`f0_up_key`、`speaker_id`、`index_rate`、`protect`、`filter_radius`、`rms_mix_rate`、`resample_sr` | `audio` |
+| **RVC Audio Synthesis** | `audios`（Autogrow，可拖入任意多个）、`mode`（`merge`＝混合平均，`concat`＝顺序拼接） | `audio` |
+
+使用方法：
+
+1. 将音色模型放到 `models/rvc/<dir>/`，`hubert_base.safetensors` 与 `rmvpe.safetensors`（或 `fcpe.safetensors`）放到 `models/rvc/`。
+2. 依次创建 Voice Loader / Hubert & Pitch Loader / Execute，把 Load Audio 的输出接到 Execute 的 `audio`。
+3. `f0_method` 必须与 Hubert & Pitch Loader 所选的 pitch 模型匹配（`rmvpe.safetensors` ↔ `rmvpe`，`fcpe.safetensors` ↔ `fcpe`）。
+4. 输出采样率跟随音色模型，除非 `resample_sr` 非 0。
+5. 输出接 Save Audio 或 Preview Audio。
+
+推理代码完全内置（`rvc_inference/`）：高通滤波、长音频自动切片、f0 提取（RMVPE/FCPE）、ContentVec 特征、faiss/npy 检索混合、保护度加权、合成器推理。`fp16 autocast` 仅在 Ampere 以及更新的 GPU（compute capability ≥ 8.0）启用，其余回退 fp32。`faiss-cpu` 为可选依赖（读取 `.index`）；没有时 `.npy` 兜底可用。
+
+注意：输出与 RVC-Project 上游一致，是随机采样的（相同输入两次运行有约 0.4-0.7 的幅值波动）——这是模型的后验采样本性，不是 bug。
+
 ## pretrained 参数说明
 
 * 可以选择 `models/rvc` 目录下的任意 `*.pth` 模型（包括你之前训练导出的音色模型），**用它等于"从某个已有音色继续微调"**；
