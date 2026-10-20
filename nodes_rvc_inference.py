@@ -145,7 +145,7 @@ class RVCExecute(io.ComfyNode):
                 RVC_INDEX.Input("index", optional=True, tooltip="Optional retrieval index."),
                 io.Combo.Input("f0_method", options=["rmvpe", "fcpe"], default="rmvpe",
                                tooltip="Pitch estimator for F0 extraction; must match the pitch model connected."),
-                io.Int.Input("f0_up_key", default=0, min=-12, max=12, step=1,
+                io.Int.Input("f0_up_key", default=0, min=-24, max=24, step=1,
                              tooltip="Transpose in semitones; positive raises pitch."),
                 io.Int.Input("speaker_id", default=0, min=0, max=109, step=1,
                              tooltip="Voice/speaker slot in multi-speaker voice checkpoints; 0 for single-speaker."),
