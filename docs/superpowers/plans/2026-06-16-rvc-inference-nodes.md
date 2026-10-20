@@ -35,7 +35,7 @@ Safety constraints (user-confirmed):
 **Files:**
 - Create: `rvc_inference/__init__.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests_rvc/test_import.py`:
 
