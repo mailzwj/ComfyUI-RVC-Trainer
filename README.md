@@ -3,7 +3,7 @@
 在 ComfyUI 内训练 RVC（Retrieval-based Voice Conversion）音色模型。训练代码使用VibeCoding参考[RVC-Project](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)项目实现：
 静音切片、高通滤波、f0 提取、HuBERT 特征、对抗训练，以及导出的 `assets/weights/*.pth` 格式。
 
-导出的音色可直接被 [ComfyUI-RVC](../ComfyUI-RVC) 加载——训练出的权重按该节点包期望的相同模块布局和 18 元素 config 列表保存。
+导出的音色可由本插件的 **RVC Voice Loader** 直接加载——推理节点读取相同的模块布局和 18 元素 config 列表（与 RVC-Project 上游一致）。
 
 ## 模型链接
 
@@ -98,13 +98,13 @@ checkpoints/     G_<epoch>.pth 和 D_<epoch>.pth，含优化器状态
 
 `G_<epoch>.pth` 保存生成器（含仅训练用的 `enc_q` 后验编码器）及其 AdamW 状态，`D_<epoch>.pth` 保存周期判别器及其 AdamW 状态。它们只用于恢复训练——可推理的模型是导出的音色文件。每对都很大（48k 下约 0.4 GB + 0.8 GB），保存新检查点时会自动删除更早的，只保留最近 5 对。
 
-导出的音色模型写入第一个 `rvc` 模型文件夹（通常是 `models/rvc/<model_name>.pth`），训练完即可在 ComfyUI-RVC 的 **Load RVC Voice** 节点中直接看到。
+导出的音色模型写入第一个 `rvc` 模型文件夹（通常是 `models/rvc/<model_name>.pth`），训练完即可在本插件的 **RVC Voice Loader** 下拉中直接看到。
 
-同一次运行还会用数据集的 HuBERT 特征构建检索索引：`<model_name>.npy`（原始向量，供ComfyUI-RVC 的 **Load RVC Index** 读取）和 `<model_name>.index`（FAISS `IVF<n>,Flat`、`nprobe 1`，RVC-Project 等工具期望的格式）。没有 faiss 时只写 `.npy`，日志会说明。超过 20 万帧的特征集会按 RVC-Project 的做法聚类到 1 万个中心，保证文件可加载。
+同一次运行还会用数据集的 HuBERT 特征构建检索索引：`<model_name>.npy`（原始向量，供本插件 **RVC Voice Loader** 的 `index_file` 读取）和 `<model_name>.index`（FAISS `IVF<n>,Flat`、`nprobe 1`，RVC-Project 等工具期望的格式）。没有 faiss 时只写 `.npy`，日志会说明。超过 20 万帧的特征集会按 RVC-Project 的做法聚类到 1 万个中心，保证文件可加载。
 
 ## 依赖
 
-- ComfyUI-RVC 使用的转换后检查点：`models/rvc/hubert_base.safetensors` 和`models/rvc/rmvpe.safetensors`（按 `rvc_hubert.format_version` /`rvc_rmvpe.format_version` 元数据识别，其他文件名按关键词匹配）。
+- 本插件使用的转换后检查点：`models/rvc/hubert_base.safetensors` 和`models/rvc/rmvpe.safetensors`（按 `rvc_hubert.format_version` /`rvc_rmvpe.format_version` 元数据识别，其他文件名按关键词匹配）。
 - `torch`、`librosa`、`scipy`、`soundfile` —— 使用pip install挨个安装或`pip install -r requirements.txt`统一安装。
 - 可选：`faiss` 和 `scikit-learn` 用于检索索引（`.index`，以及超大特征集的 1 万中心聚类）。没有它们训练照常进行，`.npy` 向量照常写出。
 - 强烈建议 CUDA GPU。Ampere 及更新的 GPU（compute capability ≥ 8.0）使用 fp16 autocast，其余用 fp32。
@@ -113,7 +113,7 @@ checkpoints/     G_<epoch>.pth 和 D_<epoch>.pth，含优化器状态
 
 1. **RVC Train Dataset**：填入音频文件夹路径，选 `v2` + `48k`，f0 用 `rmvpe`，`experiment` 填一个名字，执行后完成切片、音高与 HuBERT 特征提取。也可以改用 **RVC Train Audio List**，把音频直接连到 autogrow 接口上。
 2. **RVC Train Model**：接上 `dataset`，设置 `epochs`、`batch_size`（默认 4）、`save_every_epoch`；`pretrained` 按「pretrained 参数说明」选择（如 v2/48k 用 `f0G48k.pth`）——不选则从随机权重开始训练，小数据集训不出可用音色；执行后输出训练日志和模型路径。
-3. 训练产物：`output/rvc_train/<experiment>/<version>_<采样率>/`（切片、特征、检查点），导出的音色模型写入 `models/rvc/<model_name>.pth`，可直接用 ComfyUI-RVC 的**Load RVC Voice** 加载。
+3. 训练产物：`output/rvc_train/<experiment>/<version>_<采样率>/`（切片、特征、检查点），导出的音色模型写入 `models/rvc/<model_name>.pth`，可直接用本插件的 **RVC Voice Loader** 加载。
 4. 中断后把 `resume` 设为 true 可继续训练；改采样率或版本请改 `experiment` 名字，或勾选 `overwrite` 重建。
 
 ## 说明
