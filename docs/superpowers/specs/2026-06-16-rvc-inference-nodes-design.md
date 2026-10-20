@@ -89,7 +89,7 @@ custom_nodes/ComfyUI-RVC-Trainer/
 **Load steps**
 - Hubert: `safetensors.torch.load_file` → `HubertEncoder`; keeps module names `post_extract_proj`/`encoder`/`proj` as in `rvc_train/hubert.py`, loaded fp16 autocast on capable GPUs.
 - Pitch: filename determines class (`rmvpe` → `RMVPEModel`, `fcpe` → `FCPitch`); both loaded with the same autocast policy.
-- Clear error if a file doesn't match either hint (suggests renaming or picking the right file).
+- Clear error naming the offending file if the filename matches neither `hubert` nor `rmvpe`/`fcpe` hints; the fix is to rename the file or pick the matching entry from the dropdown.
 
 ### Node 3 — RVC Execute (`RVCExecute`)
 
@@ -166,6 +166,6 @@ custom_nodes/ComfyUI-RVC-Trainer/
 
 ## 8. Risks
 
-- Upstream `.pth` layout variety (old WebUI versions may use 18- vs 17-element config): handle 18 only, log clear error on mismatch.
+- Upstream `.pth` layout variety (old WebUI versions may use 17- vs 18-element config): handle 18 elements as the primary target; if a checkpoint carries a different element count, raise a clear error naming the count found rather than guessing.
 - `faiss-cpu` wheel availability on Windows: optional dependency, users without it can still use `.npy`.
 - Existing `ComfyUI-RVC` nodes coexist in the same ComfyUI install; node ids here will not collide (`RVCVoiceLoader`, `RVCHubertPitchLoader`, `RVCExecute`, `RVCAudioSynthesis`).
