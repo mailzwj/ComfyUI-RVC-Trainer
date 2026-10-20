@@ -28,7 +28,8 @@ def main():
     assert model.voice_version == cpt["version"]
     assert model.voice_tgt_sr == cpt["config"][-1]
 
-    T, D = 100, 768
+    # TextEncoder input width comes from the voice version (v1=256, v2=768), not a fixed guess.
+    T, D = 100, {"v1": 256, "v2": 768}[cpt["version"]]
     # phone is (B, T, D): TextEncoder's Linear applies over the last dim, so the
     # (1, D, T) layout in the task sketch crashes with the same shape error upstream would.
     phone = torch.randn(1, T, D) * 0.01
@@ -45,7 +46,25 @@ def main():
     assert out.shape[2] == OUT_SAMPLES_PER_FRAME * T, (out.shape, T)
     assert torch.isfinite(out).all()
 
-    print("PASS: synths match checkpoint keys and infer runs")
+    # Sliced decode path (what the pipeline passes for chunked inference): both
+    # skip_head and return_length set — all-or-nothing upstream, one without the
+    # other would silently run the full-frames path instead. With skip_head=25
+    # and flow warm-up 24 frames, the mixin expects the caller's pitchf window
+    # to cover the padded length (skip 25 + return 10 vs full T frames here).
+    skip_head, return_length = 25, 10
+    torch.manual_seed(0)
+    out_sliced = model.infer(
+        phone, length, pitch, pitchf, torch.tensor([0]),
+        skip_head=skip_head, return_length=return_length,
+    )[0]
+    assert out_sliced.dtype == torch.float32
+    assert out_sliced.shape[0] == 1 and out_sliced.shape[1] == 1, out_sliced.shape
+    # Sliced path upsamples only return_length frames: skip_head=25 covers the
+    # flow warm-up (24 frames) so dec_head=1 and the dec gets return_length frames.
+    assert out_sliced.shape[2] == OUT_SAMPLES_PER_FRAME * return_length, (out_sliced.shape, return_length)
+    assert torch.isfinite(out_sliced).all()
+
+    print("PASS: synths match checkpoint keys and infer runs (full + sliced)")
 
 
 if __name__ == "__main__":
