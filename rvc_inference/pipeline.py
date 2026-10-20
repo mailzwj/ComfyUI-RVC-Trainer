@@ -20,6 +20,8 @@ reference are deliberate, to match the trainer-side building blocks:
   instead of pre-sliced phone tensors.
 """
 
+import functools
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -31,16 +33,22 @@ from rvc_inference.index_loader import blend_with_index
 # helpers
 # ---------------------------------------------------------------------------
 
+@functools.lru_cache(maxsize=1)
+def _highpass_coeffs():
+    """Cached butter(N=5, Wn=48, btype='high', fs=16000) coefficients."""
+    from scipy import signal  # lazy: scipy already ships with the pinned env
+
+    return signal.butter(N=5, Wn=48, btype="high", fs=16000)
+
+
 def highpass_48hz(x):
     """Butterworth highpass at 48 Hz on 16 kHz audio (filtfilt semantics).
 
-    Coefficients are butter(N=5, Wn=48, btype='high', fs=16000) — the exact
-    design upstream computes with scipy at import; scipy (already a librosa
-    dependency) is imported lazily here the way faiss is in index_loader.
+    Coefficients come from `_highpass_coeffs`; scipy is imported lazily the
+    way faiss is in index_loader, and the design is computed once.
     """
+    b, a = _highpass_coeffs()
     from scipy import signal  # lazy: scipy already ships with the pinned env
-
-    b, a = signal.butter(N=5, Wn=48, btype="high", fs=16000)
     # scipy's backward-forward pass leaves a reversed (negative-stride) view;
     # copy so torch.from_numpy accepts it.
     y = np.ascontiguousarray(signal.filtfilt(b, a, x.double().cpu().numpy()))
@@ -123,19 +131,25 @@ def change_rms(data1, sr1, data2, sr2, rate):
 
 
 def _f0_of(pitch_model, wav16_batch):
-    """f0 Hz per 160-sample frame; unified adapter over rmvpe/fcpe."""
+    """f0 Hz per 160-sample frame; unified adapter over rmvpe/fcpe.
+
+    Both branches run under an explicitly disabled autocast: f0 models are
+    fp32-only, and a caller-side `torch.autocast("cuda", fp16)` (as the
+    convert() wrapper of Task 6 adds) must not silently downcast their matmul
+    or conv layers.
+    """
     module = pitch_model.module
     if pitch_model.pitch_kind == "rmvpe":
         from rvc_train.rmvpe import infer_f0
-        f0 = infer_f0(module, wav16_batch, thred=0.03)
+        with torch.autocast(device_type=wav16_batch.device.type, enabled=False):
+            f0 = infer_f0(module, wav16_batch, thred=0.03)
         return torch.as_tensor(f0).float().reshape(1, -1)
     # fcpe: module(wav[1, N] on the model's device, threshold=...) -> (1, T) Hz
-    wav_batch = wav16_batch
     param = next(module.parameters(), None)
-    if param is not None and param.device != wav_batch.device:
-        wav_batch = wav_batch.to(param.device)
-    with torch.inference_mode():
-        f0 = module(wav_batch, threshold=0.006)
+    if param is not None and param.device != wav16_batch.device:
+        wav16_batch = wav16_batch.to(param.device)
+    with torch.autocast(device_type=wav16_batch.device.type, enabled=False), torch.inference_mode():
+        f0 = module(wav16_batch, threshold=0.006)
     return f0.float().reshape(1, -1)
 
 
@@ -220,20 +234,37 @@ class RVCPipeline:
         device,
     ):
         """Returns (waveform_1d float32 CPU, out_sr int)."""
+        if if_f0 == 1 and pitch_model is None:
+            raise RuntimeError("ERROR: if_f0 is 1 but no pitch model (rmvpe/fcpe) was provided")
+        if if_f0 == 1 and net_g.voice_if_f0 != 1:
+            raise RuntimeError(
+                "ERROR: if_f0 is 1 but the voice checkpoint is not f0-capable: %s (voice f0=%s)"
+                % (net_g.voice_path, net_g.voice_if_f0))
+        if if_f0 == 0 and net_g.voice_if_f0 == 1:
+            raise RuntimeError(
+                "ERROR: if_f0 is 0 but the voice checkpoint is f0-capable: %s (voice f0=%s)"
+                % (net_g.voice_path, net_g.voice_if_f0))
+        if version != net_g.voice_version:
+            raise RuntimeError(
+                "ERROR: version %s does not match voice checkpoint version %s (%s)"
+                % (version, net_g.voice_version, net_g.voice_path))
+        sid_t = sid_t.to(device).long().reshape(-1)
+        if sid_t.numel() and not (0 <= int(sid_t.max()) < net_g.voice_n_spk):
+            raise RuntimeError(
+                "ERROR: speaker id %d is out of range for %d speakers in %s"
+                % (int(sid_t.max()), net_g.voice_n_spk, net_g.voice_path))
         audio = highpass_48hz(audio)
         opt_ts = self.split_points(audio)
         audio_pad = F.pad(audio.unsqueeze(0), (self.t_pad, self.t_pad), mode="reflect").squeeze(0)
         p_len = audio_pad.shape[0] // self.window
-        sid_t = sid_t.to(device).long().reshape(-1)
         pitch, pitchf = None, None
         if if_f0 == 1:
             f0_hz = _f0_of(pitch_model, audio_pad[None].to(device))
             # rmvpe/fcpe land on N//160 (+1) frames; the synthesizer's nsff0
             # slice (skip_head, return_length) needs an exact per-frame track
-            # over the padded length — take p_len = N//160 as reference does.
+            # over the padded length — take p_len = N//160 as reference does,
+            # so truncate the (+1)-frame track to p_len.
             pitch, pitchf = coarse_f0(f0_hz, f0_up_key, filter_radius)
-            # rmvpe/fcpe land on N//160 (+1) frames; the track must cover the
-            # padded length exactly, so truncate to p_len like the reference.
             pitch = pitch.reshape(1, -1)[:, :p_len].to(device).long()
             pitchf = pitchf.reshape(1, -1)[:, :p_len].float().to(device)
         audio_opt = []
