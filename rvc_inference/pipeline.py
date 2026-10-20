@@ -258,6 +258,14 @@ class RVCPipeline:
                 % (int(sid_t.max()), net_g.voice_n_spk, net_g.voice_path))
         audio = highpass_48hz(audio)
         opt_ts = self.split_points(audio)
+        if audio.shape[0] <= self.t_pad:
+            # reflect padding needs pad < length; shorter clips would surface
+            # an opaque torch error (CUDA's x_pad=3 makes this reachable with
+            # a 2 s clip).
+            raise RuntimeError(
+                "ERROR: audio is too short for conversion (%d samples at 16 kHz; "
+                "need more than the %d-sample lead-in pad; trim less or run on CPU)"
+                % (audio.shape[0], self.t_pad))
         audio_pad = F.pad(audio.unsqueeze(0), (self.t_pad, self.t_pad), mode="reflect").squeeze(0)
         p_len = audio_pad.shape[0] // self.window
         pitch, pitchf = None, None
