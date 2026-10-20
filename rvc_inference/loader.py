@@ -4,8 +4,6 @@ import os
 
 import torch
 
-import comfy.model_management  # noqa: F401  (ensures device selection is available at import)
-
 
 class PitchModel:
     """Bundle of an RMVPE or FCPE model, tagged with its kind, for the node graph."""
@@ -50,7 +48,10 @@ def load_voice(path, device):
     model = model.to(device).eval()
     model.voice_version = version
     model.voice_if_f0 = if_f0
-    model.voice_tgt_sr = config[-1]
+    from rvc_train.models import sr2sr
+    # Normalize the string sample-rate configs ("48k") to the numeric sr (48000).
+    tgt = getattr(model, "voice_tgt_sr", config[-1])
+    model.voice_tgt_sr = sr2sr[tgt] if isinstance(tgt, str) else int(tgt)
     model.voice_n_spk = config[-3]
     model.voice_path = path
     return model

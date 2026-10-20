@@ -18,8 +18,9 @@ def main():
     device = mm.get_torch_device()
 
     v = load_voice(VOICE_V2, device)
-    assert v.voice_version == "v2" and int(v.voice_tgt_sr) == 48000, (v.voice_version, v.voice_tgt_sr)
-    assert v.voice_n_spk == 109  # probed: emb_g.weight.shape[0] == 109 in my-vocals-v2-48k.pth (both test voices use 109 slots)
+    assert v.voice_version == "v2" and isinstance(v.voice_tgt_sr, int) and v.voice_tgt_sr == 48000, (v.voice_version, v.voice_tgt_sr)
+    n_spk = torch.load(VOICE_V2, map_location="cpu", weights_only=True)["weight"]["emb_g.weight"].shape[0]
+    assert v.voice_n_spk == n_spk, (v.voice_n_spk, n_spk)  # probed: my-vocals-v2-48k.pth has 109 slots
     assert v.voice_if_f0 == 1
 
     v2 = load_voice(VOICE_OTHER, device)
@@ -44,16 +45,18 @@ def main():
         wav = wav.to(device)
     # Observed f0 shapes on the 1s/16k sine: rmvpe -> numpy (101,) flattened
     # frames (infer_f0 squeezes batch, returns .cpu().numpy()); fcpe -> torch
-    # (1, 101) Mel frames. Both ~101 frames = 16000//160+1. Only finiteness
-    # asserted; both medians land near 220 Hz for the 220 Hz sine.
+    # (1, 101) Mel frames. Both ~101 frames = 16000//160+1. Both medians land
+    # near 220 Hz for the 220 Hz sine.
+    from rvc_train.rmvpe import infer_f0
     with torch.inference_mode():
-        if p.pitch_kind == "rmvpe":
-            from rvc_train.rmvpe import infer_f0
-            f0 = infer_f0(p.module, wav, thred=0.03)
-        else:
-            f0 = p2.module(wav, threshold=0.006)
-    f0 = torch.as_tensor(f0)  # rmvpe's infer_f0 returns numpy; fcpe returns a tensor
-    assert torch.isfinite(f0).all()
+        f0_rmvpe = infer_f0(p.module, wav, thred=0.03)  # numpy (101,)
+        f0_fcpe = p2.module(wav, threshold=0.006)       # torch (1, 101)
+        for tag, f0 in (("rmvpe", f0_rmvpe), ("fcpe", f0_fcpe)):
+            f0t = torch.as_tensor(f0)
+            assert torch.isfinite(f0t).all(), tag
+            med = float(f0t[f0t > 0].abs().median())
+            assert abs(med - 220) < 30, (tag, med)
+            print("PASS: %s f0 median %.2f Hz, shape %s" % (tag, med, tuple(f0t.shape)))
     print("PASS: loaders")
 
 if __name__ == "__main__":
