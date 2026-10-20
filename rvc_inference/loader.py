@@ -20,7 +20,10 @@ def load_voice(path, device):
     Rejects pretrained base models (G_*.pth / f0G48k.pth style) that carry no
     'weight'/'config' inference payload, with a message pointing at re-exporting.
     """
-    from rvc_inference.synths import SYNTH_CLASSES
+    try:
+        from .synths import SYNTH_CLASSES
+    except ImportError:  # pragma: no cover - absolute form when the pack is on sys.path
+        from rvc_inference.synths import SYNTH_CLASSES
 
     if not os.path.isfile(path):
         raise FileNotFoundError("RVC voice model not found: %s" % path)
@@ -68,7 +71,11 @@ def load_pitch(path, device):
     name = os.path.basename(path).lower()
     if "fcpe" in name:
         import comfy.utils
-        from rvc_inference.fcpe import FCPitch
+
+        try:
+            from .fcpe import FCPitch
+        except ImportError:  # pragma: no cover - absolute form when the pack is on sys.path
+            from rvc_inference.fcpe import FCPitch
         sd = comfy.utils.load_torch_file(path, safe_load=True)
         model = FCPitch(device=device, dtype=torch.float32, operations=torch.nn)
         model.load_state_dict(sd, strict=True)

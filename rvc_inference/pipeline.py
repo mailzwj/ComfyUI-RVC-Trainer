@@ -26,7 +26,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from rvc_inference.index_loader import blend_with_index
+try:
+    from .index_loader import blend_with_index
+except ImportError:  # pragma: no cover - absolute form when the pack is on sys.path
+    from rvc_inference.index_loader import blend_with_index
 
 
 # ---------------------------------------------------------------------------
