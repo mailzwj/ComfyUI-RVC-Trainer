@@ -1,3 +1,3 @@
 """Self-contained RVC inference nodes: loaders, pipeline, synthesis."""
 
-AVAILABLE_MODULES = ["rvc_inference.synths", "rvc_inference.loader", "rvc_inference.fcpe"]
+AVAILABLE_MODULES = ["rvc_inference.synths", "rvc_inference.loader", "rvc_inference.fcpe", "rvc_inference.index_loader", "rvc_inference.pipeline"]
