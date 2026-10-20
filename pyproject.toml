@@ -1,7 +1,7 @@
 [project]
 name = "rvc-trainer"
 description = "在 ComfyUI 内训练 RVC（Retrieval-based Voice Conversion）音色模型。导出*.pth、*.npy和*.index。"
-version = "1.0.2"
+version = "1.0.3"
 requires-python = ">=3.9"
 license = { text = "MIT License" }
 dependencies = [
