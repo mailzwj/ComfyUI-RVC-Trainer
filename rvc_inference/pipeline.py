@@ -26,10 +26,13 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+# The trainer pack is loaded by ComfyUI under a hyphenated module name, so its
+# top-level packages are NOT importable by absolute name at runtime; prefer
+# relative imports, with an absolute fallback for direct-layout imports.
 try:
     from .index_loader import blend_with_index
-except ImportError:  # pragma: no cover - absolute form when the pack is on sys.path
-    from rvc_inference.index_loader import blend_with_index
+except ImportError:  # pragma: no cover - pack loaded under a hyphenated name
+    from ..rvc_inference.index_loader import blend_with_index
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +146,10 @@ def _f0_of(pitch_model, wav16_batch):
     """
     module = pitch_model.module
     if pitch_model.pitch_kind == "rmvpe":
-        from rvc_train.rmvpe import infer_f0
+        try:
+            from rvc_train.rmvpe import infer_f0
+        except ImportError:  # pragma: no cover - pack loaded under a hyphenated name
+            from ..rvc_train.rmvpe import infer_f0
         with torch.autocast(device_type=wav16_batch.device.type, enabled=False):
             f0 = infer_f0(module, wav16_batch, thred=0.03)
         return torch.as_tensor(f0).float().reshape(1, -1)
@@ -185,7 +191,10 @@ class RVCPipeline:
         return opt_ts
 
     def vc(self, hubert, net_g, sid, audio0, pitch, pitchf, index_vectors, index_rate, version, protect, device):
-        from rvc_train.hubert import extract_features
+        try:
+            from rvc_train.hubert import extract_features
+        except ImportError:  # pragma: no cover - pack loaded under a hyphenated name
+            from ..rvc_train.hubert import extract_features
 
         feats = extract_features(hubert, audio0.view(1, -1).to(device), version).to(device)
         if protect < 0.5 and pitch is not None and pitchf is not None:

@@ -4,6 +4,15 @@ import os
 
 import torch
 
+# The trainer pack is loaded by ComfyUI under a hyphenated module name, so its
+# top-level packages are NOT importable by absolute name at runtime; reach
+# rvc_train through the package hierarchy, with an absolute fallback for
+# direct-layout imports (pack dir legitimately on sys.path).
+try:
+    from rvc_train.models import sr2sr  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover - pack loaded under a hyphenated name
+    from ..rvc_train.models import sr2sr
+
 
 class PitchModel:
     """Bundle of an RMVPE or FCPE model, tagged with its kind, for the node graph."""
@@ -51,7 +60,6 @@ def load_voice(path, device):
     model = model.to(device).eval()
     model.voice_version = version
     model.voice_if_f0 = if_f0
-    from rvc_train.models import sr2sr
     # Normalize the string sample-rate configs ("48k") to the numeric sr (48000).
     tgt = getattr(model, "voice_tgt_sr", config[-1])
     model.voice_tgt_sr = sr2sr[tgt] if isinstance(tgt, str) else int(tgt)
@@ -62,7 +70,10 @@ def load_voice(path, device):
 
 def load_hubert(path, device):
     """Load the ContentVec hubert encoder via the trainer's loader."""
-    from rvc_train.hubert import load_hubert as _load
+    try:
+        from rvc_train.hubert import load_hubert as _load
+    except ImportError:  # pragma: no cover - pack loaded under a hyphenated name
+        from ..rvc_train.hubert import load_hubert as _load
     return _load(path, device)
 
 
@@ -81,7 +92,10 @@ def load_pitch(path, device):
         model.load_state_dict(sd, strict=True)
         return PitchModel("fcpe", model.to(device).eval())
     if "rmvpe" in name:
-        from rvc_train.rmvpe import load_rmvpe as _load
+        try:
+            from rvc_train.rmvpe import load_rmvpe as _load
+        except ImportError:  # pragma: no cover - pack loaded under a hyphenated name
+            from ..rvc_train.rmvpe import load_rmvpe as _load
         return PitchModel("rmvpe", _load(path, device))
     raise RuntimeError(
         "ERROR: %s is not an RVC pitch checkpoint (expected 'rmvpe' or 'fcpe' in the filename)" % path)

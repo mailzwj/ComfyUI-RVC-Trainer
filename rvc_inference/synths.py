@@ -12,7 +12,15 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.utils import remove_weight_norm, weight_norm
 
-import rvc_train.models as M
+# The trainer pack is loaded by ComfyUI under a hyphenated module name, so its
+# top-level packages are NOT importable by absolute name at runtime; reach
+# rvc_train through the package hierarchy, with an absolute fallback for
+# direct-layout imports (pytest-style runs with the pack dir on sys.path).
+try:
+    import rvc_train.models as M  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover - pack loaded under a hyphenated name
+    from .. import rvc_train
+    from ..rvc_train import models as M
 
 
 def _to_int(x):
