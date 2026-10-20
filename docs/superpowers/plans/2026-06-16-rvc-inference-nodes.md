@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
 Create a placeholder `tests_rvc/__init__.py` (empty file).
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 ```powershell
@@ -61,7 +61,7 @@ Run:
 ```
 Expected: **FAIL** with `ModuleNotFoundError: No module named 'rvc_inference'`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `rvc_inference/__init__.py`:
 
@@ -71,12 +71,12 @@ Create `rvc_inference/__init__.py`:
 AVAILABLE_MODULES = []
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: same as Step 2.
 Expected: `PASS: package imports`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add rvc_inference/__init__.py tests_rvc/
@@ -96,7 +96,7 @@ Patch to `rvc_train/models.py` (additive, default-valued): `TextEncoder.__init__
 - Create: `rvc_inference/synths.py`
 - Test: `tests_rvc/test_synths.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests_rvc/test_synths.py`:
 
@@ -151,7 +151,7 @@ Notes the executor needs:
 - Config slicing requires `len(config)==18` — verified against the real checkpoint.
 - Run in the `cu130` env where `comfy.utils` is importable via PYTHONPATH above.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 ```powershell
@@ -159,7 +159,7 @@ Run:
 ```
 Expected: **FAIL** with `ModuleNotFoundError: No module named 'rvc_inference.synths'` (or AttributeError on infer).
 
-- [ ] **Step 3: Patch TextEncoder + write synths.py**
+- [x] **Step 3: Patch TextEncoder + write synths.py**
 
 Patch `rvc_train/models.py` `TextEncoder.__init__` (line 241):
 
@@ -439,20 +439,20 @@ and in callers drop the trailing `seed_zp`/`np := None` arguments accordingly:
         return o, x_mask, (z, None)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: same as Step 2.
 Expected: `PASS: synths match checkpoint keys and infer runs`.
 
 If a key mismatch shows up, it means `rvc_train.models` naming differs from upstream `.pth` for that submodule — fix by aligning the class in `rvc_train/models.py` (naming only), re-run both this test and the existing trainer smoke.
 
-- [ ] **Step 5: Update `rvc_inference/__init__.py` AVAILABLE_MODULES**
+- [x] **Step 5: Update `rvc_inference/__init__.py` AVAILABLE_MODULES**
 
 ```python
 AVAILABLE_MODULES = ["rvc_inference.synths"]
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add rvc_train/models.py rvc_inference/synths.py rvc_inference/__init__.py tests_rvc/test_synths.py
@@ -467,7 +467,7 @@ git commit -m "feat(rvc-inference): inference synthesizers distilled from RVC-Pr
 - Create: `rvc_inference/index_loader.py`
 - Test: `tests_rvc/test_index_loader.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests_rvc/test_index_loader.py`:
 
@@ -517,7 +517,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 ```powershell
@@ -525,7 +525,7 @@ Run:
 ```
 Expected: **FAIL** with `ModuleNotFoundError: No module named 'rvc_inference.index_loader'`.
 
-- [ ] **Step 3: Implement `index_loader.py`**
+- [x] **Step 3: Implement `index_loader.py`**
 
 ```python
 """Feature-index retrieval for RVC inference.
@@ -639,12 +639,12 @@ class IndexVectors:
 
 Final `load_index` `_npy` branch also corrects the `magic` comment — but the file keeps magic check only for `.index`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: same as Step 2.
 Expected: `PASS: index_loader loads .npy and .index and blends`. If the faiss magic mismatch bites, fix the constant (print magic during debugging) — do not loosen beyond the two known magics.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add rvc_inference/index_loader.py tests_rvc/test_index_loader.py
@@ -660,7 +660,7 @@ git commit -m "feat(rvc-inference): faiss and npy index loaders"
 - Create: `rvc_inference/fcpe.py`  (vendor of ComfyUI-RVC `rvc/fcpe.py`, 1-to-1; `operations=torch.nn` works because every use site passes device=/dtype= kwargs)
 - Test: `tests_rvc/test_loader.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests_rvc/test_loader.py`:
 
@@ -714,7 +714,7 @@ if __name__ == "__main__":
 
 Note: the test also imports `load_hubert` — add it to the same import line.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 ```powershell
@@ -722,7 +722,7 @@ Run:
 ```
 Expected: **FAIL** (`No module named 'rvc_inference.loader'`).
 
-- [ ] **Step 3: Vendor `fcpe.py`, implement `loader.py`**
+- [x] **Step 3: Vendor `fcpe.py`, implement `loader.py`**
 
 Vendor step — copy **270 →** 175 lines from `D:\Workspace\ComfyUI\custom_nodes\ComfyUI-RVC\rvc\fcpe.py` into `rvc_inference/fcpe.py` **minus** line 5 (`import comfy.ops`), keeping everything else verbatim (all layers take `operations=`; callsites pass `torch.nn` because `nn.Conv1d/LayerNorm/GroupNorm/Linear` all accept `device=`/`dtype=` kwargs).
 
@@ -833,12 +833,12 @@ Sharpened `load_pitch` fcpe branch:
 
 (Note: `load_torch_file(..., safe_load=True)` errors if the file isn't safetensors-backed — matching the reference pack's requirement that these base assets are the converted safetensors.)
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: same as Step 2.
 Expected: `PASS: loaders`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add rvc_inference/loader.py rvc_inference/fcpe.py tests_rvc/test_loader.py
@@ -853,7 +853,7 @@ git commit -m "feat(rvc-inference): voice/hubert/pitch loaders"
 - Create: `rvc_inference/pipeline.py`
 - Test: `tests_rvc/test_pipeline.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests_rvc/test_pipeline.py`:
 
@@ -903,7 +903,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 ```powershell
@@ -911,7 +911,7 @@ Run:
 ```
 Expected: **FAIL** (`No module named 'rvc_inference.pipeline'`).
 
-- [ ] **Step 3: Implement `pipeline.py`**
+- [x] **Step 3: Implement `pipeline.py`**
 
 The file is vendored from `D:\Workspace\ComfyUI\custom_nodes\ComfyUI-RVC\rvc\pipeline.py` plus `nodes_rvc.py` glue, with three deliberate changes:
 
@@ -1202,12 +1202,12 @@ def _median_filter_int(pitch, radius):
 
 Also fix one more typo that slipped into `vc` paste above: `permUTE` must read `permute` — authoritative `vc` uses, as the reference, `feats0 = F.interpolate(feats0.permute(0, 2, 1), scale_factor=2).permute(0, 2, 1)`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: same as Step 2.
 Expected: `PASS: pipeline convert end-to-end`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add rvc_inference/pipeline.py tests_rvc/test_pipeline.py
@@ -1223,7 +1223,7 @@ git commit -m "feat(rvc-inference): conversion pipeline with faiss retrieval and
 - Modify: `__init__.py`
 - Test: `tests_rvc/test_nodes.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests_rvc/test_nodes.py`:
 
@@ -1251,7 +1251,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 ```powershell
@@ -1259,7 +1259,7 @@ Run:
 ```
 Expected: **FAIL** (`No module named 'nodes_rvc_inference'`).
 
-- [ ] **Step 3: Implement `nodes_rvc_inference.py`**
+- [x] **Step 3: Implement `nodes_rvc_inference.py`**
 
 ```python
 """ComfyUI nodes for RVC voice conversion inference."""
@@ -1523,7 +1523,7 @@ def _default_of(options, wanted):
 - `launch_pitch` — the `RVC_PITCH.Input` slot needs `optional=False`; that is already implied by being listed without `optional=True`.
 - `waveform[b].reshape(-1).float().cpu()` — the reference passes `(1, T)` to `_f0_of` via `audio_pad.unsqueeze(0)`; `convert` already does the `unsqueeze(0)` internally.
 
-- [ ] **Step 4: Register in `__init__.py`**
+- [x] **Step 4: Register in `__init__.py`**
 
 Current `__init__.py`:
 
@@ -1560,12 +1560,12 @@ NODE_DISPLAY_NAME_MAPPINGS = {**_TRAIN_NODE_DISPLAY_NAME_MAPPINGS, **_INFERENCE_
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: same as Step 2.
 Expected: `PASS: nodes register and option formatting`.
 
-- [ ] **Step 6: ComfyUI server import check**
+- [x] **Step 6: ComfyUI server import check**
 
 Run (server mode):
 ```powershell
@@ -1573,7 +1573,7 @@ Run (server mode):
 ```
 from `D:\Workspace\ComfyUI`. Expected: the file `__init__.py` imports cleanly; if a broken module raises, the server exits non-zero and prints which node pack failed.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add nodes_rvc_inference.py __init__.py tests_rvc/test_nodes.py
@@ -1588,7 +1588,7 @@ git commit -m "feat(rvc-inference): four ComfyUI nodes wired into the pack"
 - Create: `tests_rvc/test_smoke_e2e.py` (artifact script, no commit — kept in working tree only? NO it is committed, deliverable test)
 - Commit alongside README in Task 8 or same commit.
 
-- [ ] **Step 1: Write the smoke script**
+- [x] **Step 1: Write the smoke script**
 
 Create `tests_rvc/test_smoke_e2e.py`:
 
@@ -1665,12 +1665,12 @@ before editing the accessor names in the test.
 
 Note 2: `execute` classmethods call other nodes' `execute` directly, NOT through ComfyUI scheduler. That is fine for a smoke test.
 
-- [ ] **Step 2: Run the smoke**
+- [x] **Step 2: Run the smoke**
 
 Run: as in script docstring.
 Expected: `PASS: end-to-end smoke — output at D:\Workspace\ComfyUI\output\rvc_inference_smoke`, plus a valid `smoke.wav` (~3 s, voice-converted). wav should sound like a converted voice emission (any tone/morph acceptable given a synthetic sine input), just confirm it plays and is not silent/noisy.
 
-- [ ] **Step 3: Run the whole test suite**
+- [x] **Step 3: Run the whole test suite**
 
 ```powershell
 & "D:\UserApps\Conda\envs\cu130\python.exe" tests_rvc\test_import.py
@@ -1683,7 +1683,7 @@ Expected: `PASS: end-to-end smoke — output at D:\Workspace\ComfyUI\output\rvc_
 ```
 Expected: every script prints `PASS: ...`, no exit code > 0.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tests_rvc/test_smoke_e2e.py
@@ -1699,7 +1699,7 @@ git commit -m "test(rvc-inference): real-model end-to-end smoke"
 - Modify: `pyproject.toml` (optional deps `[project.optional-dependencies] inference = ["faiss-cpu"]`)
 - Test: none (documentation only, but `--quick-test-for-ci` re-run required)
 
-- [ ] **Step 1: Add inference section to `README.md`**
+- [x] **Step 1: Add inference section to `README.md`**
 
 Insert after the node table (or at end of file) — maintain the doc's Chinese style. Content:
 
@@ -1728,7 +1728,7 @@ Insert after the node table (or at end of file) — maintain the doc's Chinese s
 注意：输出与 RVC-Project 上游一致，是随机采样的（相同输入两次运行有约 0.4-0.7 的幅值波动）——这是模型的后验采样本性，不是 bug。
 ```
 
-- [ ] **Step 2: `pyproject.toml` optional dependency**
+- [x] **Step 2: `pyproject.toml` optional dependency**
 
 Insert under `[project.optional-dependencies]`:
 
@@ -1743,7 +1743,7 @@ inference = [
 ]
 ```
 
-- [ ] **Step 3: Re-run `--quick-test-for-ci`**
+- [x] **Step 3: Re-run `--quick-test-for-ci`**
 
 Run:
 ```powershell
@@ -1752,7 +1752,7 @@ Run:
 (workdir `D:\Workspace\ComfyUI`)
 Expected: clean exit 0.
 
-- [ ] **Step 4: Final commit**
+- [x] **Step 4: Final commit**
 
 ```bash
 git add README.md pyproject.toml
@@ -1763,13 +1763,13 @@ git commit -m "docs(rvc-inference): inference nodes documentation and faiss opti
 
 ### Completion checklist
 
-- [ ] `rvc_inference/` contains synths/index_loader/loader/fcpe/pipeline modules with tests.
-- [ ] `rvc_train/models.py` patch is additive (TextEncoder `f0` default True) — training path unchanged.
-- [ ] Four nodes registered, showing up under `RVC/inference` category.
-- [ ] Real-model smoke run inside `cu130` produces a converted wav.
-- [ ] No package installs were performed; `conda` env untouched.
-- [ ] All run-commands pinned to the `cu130` interpreter and `$env:PYTHONPATH` combo above.
-- [ ] Every intermediate task committed individually (7 commits + docs commit).
+- [x] `rvc_inference/` contains synths/index_loader/loader/fcpe/pipeline modules with tests.
+- [x] `rvc_train/models.py` patch is additive (TextEncoder `f0` default True) — training path unchanged.
+- [x] Four nodes registered, showing up under `RVC/inference` category.
+- [x] Real-model smoke run inside `cu130` produces a converted wav.
+- [x] No package installs were performed; `conda` env untouched.
+- [x] All run-commands pinned to the `cu130` interpreter and `$env:PYTHONPATH` combo above.
+- [x] Every intermediate task committed individually (7 commits + docs commit).
 
 ### Known risks / escalation path
 
