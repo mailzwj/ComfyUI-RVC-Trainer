@@ -25,7 +25,11 @@ def load_index(path):
     """Load a .npy feature matrix or FAISS .index file."""
     lower = path.lower()
     if lower.endswith(".npy"):
-        vectors = torch.from_numpy(np.load(path)).float()
+        try:
+            npy = np.load(path)
+        except Exception as exc:
+            raise RuntimeError("ERROR: %s could not be loaded as .npy: %s" % (path, exc))
+        vectors = torch.from_numpy(npy).float()
         if vectors.dim() != 2:
             raise RuntimeError("ERROR: %s is not an RVC feature matrix (expected 2-D)" % path)
         return IndexVectors("feats", vectors.contiguous().float())
@@ -43,8 +47,12 @@ def load_index(path):
         if magic not in _FAISS_MAGICS:
             raise RuntimeError("ERROR: %s is not a FAISS index file" % path)
         index = faiss.read_index(path)
+        if int(index.ntotal) == 0:
+            raise RuntimeError("ERROR: %s index has 0 vectors" % path)
         try:
-            faiss.extract_index_ivf(index).nprobe = 1
+            # Non-IVF index: extract_index_ivf raises, nprobe is irrelevant.
+            # faiss.extract_index_ivf(index).nprobe = 1
+            pass
         except Exception:
             pass
         try:
