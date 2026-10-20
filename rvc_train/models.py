@@ -238,7 +238,7 @@ class Encoder(nn.Module):
 
 
 class TextEncoder(nn.Module):
-    def __init__(self, in_channels, out_channels, hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout, device=None, dtype=None, operations=None):
+    def __init__(self, in_channels, out_channels, hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout, f0=True, device=None, dtype=None, operations=None):
         super().__init__()
         self.out_channels = out_channels
         self.hidden_channels = hidden_channels
@@ -249,7 +249,8 @@ class TextEncoder(nn.Module):
         self.p_dropout = float(p_dropout)
         self.emb_phone = operations.Linear(in_channels, hidden_channels, device=device, dtype=dtype)
         self.lrelu = nn.LeakyReLU(0.1, inplace=True)
-        self.emb_pitch = operations.Embedding(256, hidden_channels, device=device, dtype=dtype)
+        if f0:
+            self.emb_pitch = operations.Embedding(256, hidden_channels, device=device, dtype=dtype)
         self.encoder = Encoder(hidden_channels, filter_channels, n_heads, n_layers, kernel_size, float(p_dropout), device=device, dtype=dtype, operations=operations)
         self.proj = operations.Conv1d(hidden_channels, out_channels * 2, 1, device=device, dtype=dtype)
 
