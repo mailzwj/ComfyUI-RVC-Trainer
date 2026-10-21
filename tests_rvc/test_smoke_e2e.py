@@ -95,18 +95,21 @@ def main():
     assert abs(concat["waveform"].shape[-1] - 2 * observed) <= 1000, concat["waveform"].shape
 
     merged, = RVCAudioSynthesis.execute(audios={"audio0": out, "audio1": out}, mode="merge").result
-    # merge aligns and averages takes (it does not join them), so two identical
-    # takes merge back to exactly one take: same length as `out` and the same
-    # samples (per-sample contributor normalization returns the average).
+    # merge aligns and straight-sums takes (it does not join them): two
+    # identical takes sum to exactly double amplitude; the 0.99 peak cap only
+    # engages when that sum would clip (the converted take peaks ~0.37, so no
+    # cap here and the merged waveform must be exactly 2x).
     assert merged["sample_rate"] == out["sample_rate"]
     assert merged["waveform"].shape == out["waveform"].shape, \
         (merged["waveform"].shape, out["waveform"].shape)
-    assert torch.allclose(merged["waveform"], out["waveform"], atol=1e-5), \
-        "merge of two identical takes must return the take itself"
+    sum_would_clip = 2.0 * out["waveform"].abs().max().item() > 0.99
+    expected = out["waveform"] * (0.99 / out["waveform"].abs().max().item()) if sum_would_clip \
+        else 2.0 * out["waveform"]
+    assert torch.allclose(merged["waveform"], expected, atol=1e-5), \
+        "merge of two identical takes must be their peak-capped sum"
     assert torch.isfinite(merged["waveform"]).all()
     print("PASS: RVCAudioSynthesis: concat %d samples, merge %d samples"
           % (concat["waveform"].shape[-1], merged["waveform"].shape[-1]))
-
     # write output wav to make manual listening possible
     import soundfile as sf
     OUT_DIR = CUI + r"\output\rvc_inference_smoke"

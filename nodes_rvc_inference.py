@@ -242,46 +242,27 @@ def _apply_seam_fades(segments, sr):
 
 
 def _merge(waves):
-    """Average overlapping takes, normalized and loudness-restored.
+    """Sum overlapping takes directly (no averaging), peak-capped only.
 
-    Shorter waves are zero-padded to a common width, but instead of a plain
-    sum/len(waves), a per-sample mask counts how many waves actually contain
-    each sample; acc is divided by that count. Padded regions therefore average
-    only the real contributors, and samples covered by no wave (count == 0)
-    stay zero instead of becoming 0/0.
-
-    Plain averaging attenuates incoherent content: RVC synthesis re-samples
-    each take (posterior sampling), so phase/micro-detail decorrelates and the
-    mean lands ~1/len(waves) the way down in amplitude. The averaged result is
-    therefore scaled back to the mean input RMS (computed over each take's true
-    extent). Identical takes need no restore (gain == 1), but phase-shifted or
-    re-rendered takes come back at the loudness of their sources. The peak cap
-    keeps the restore from clipping.
+    Shorter waves are zero-padded to the common width, so every sample gets the
+    plain sum of the takes that actually cover it. Average normalization was
+    dropped on purpose: RVC synthesis re-samples each take, so takes are
+    phase-incoherent and averaging attenuates the merged result (~1/len(waves))
+    quieter than the sources. A straight sum keeps the input loudness; the peak
+    cap is the only guard, rolling the total back to 0.99 headroom if the sum
+    would clip.
     """
     width = max(w.shape[-1] for w in waves)
     acc = None
-    count = None
-    per_take_rms = []
     for w in waves:
-        per_take_rms.append(w.float().pow(2).mean().clamp_min(1e-12).sqrt())
-        if w.shape[-1] == width:
-            mask = torch.ones_like(w.float())
-        else:
-            mask = torch.zeros(w.shape[:-1] + (width,), dtype=torch.float32, device=w.device)
-            mask[..., :w.shape[-1]] = 1.0            # this wave's true length
+        if w.shape[-1] != width:
             w = torch.nn.functional.pad(w.float(), (0, width - w.shape[-1]))
         w = w.float()
         acc = w if acc is None else acc + w
-        count = mask if count is None else count + mask
-    out = torch.where(count > 0, acc / count.clamp(min=1), torch.zeros_like(acc))
-    rms_out = out.float().pow(2).mean().clamp_min(1e-12).sqrt()
-    rms_in = torch.stack(per_take_rms).mean()
-    gain = rms_in / rms_out
-    peak = out.abs().max() / 0.99
+    peak = acc.abs().max() / 0.99
     if peak > 1:
-        gain = torch.clamp(gain, max=peak.reciprocal())
-    out = out * gain.to(out.dtype)
-    return out
+        acc = acc / peak
+    return acc
 
 
 class RVCAudioSynthesis(io.ComfyNode):
